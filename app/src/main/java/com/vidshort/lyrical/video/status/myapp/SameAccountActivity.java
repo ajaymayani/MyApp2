@@ -1,14 +1,14 @@
 package com.vidshort.lyrical.video.status.myapp;
 
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
-
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
 import com.faltenreich.skeletonlayout.Skeleton;
 import com.faltenreich.skeletonlayout.SkeletonLayoutUtils;
@@ -33,8 +33,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Date;
 
-public class MainActivity extends AppCompatActivity {
-
+public class SameAccountActivity extends AppCompatActivity {
     RecyclerView rvAppList;
     Skeleton skeleton;
     String jsonString;
@@ -42,15 +41,14 @@ public class MainActivity extends AppCompatActivity {
     ArrayList<Apps> appsArrayList = new ArrayList<>();
     SharedPreferences sp;
     SharedPreferences.Editor editor;
-    String responseFileName = "apps.json";
-    String appData = "appData.json";
+    String responseFileName = "accountLink.json";
+    String accountData = "accountData.json";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-        sp = getSharedPreferences("timeSP", MODE_PRIVATE);
+        setContentView(R.layout.activity_same_account);
+        sp = getSharedPreferences("timeSP2", MODE_PRIVATE);
         editor = sp.edit();
         rvAppList = findViewById(R.id.rvAppList);
         skeleton = findViewById(R.id.skeletonLayout);
@@ -62,6 +60,7 @@ public class MainActivity extends AppCompatActivity {
         Log.e("log", "time " + sp.getLong("time", 0));
         if (sp.getLong("time", 0) == 0) {
             newRequest();
+
         } else if (new Date().getTime() > (sp.getLong("time", 0) + 300000)) {
             Log.e("log", "inside if");
             newRequest();
@@ -83,6 +82,46 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
             return "";
         }
+    }
+
+    void newRequest() {
+        jsonString = getJsonFromAsset();
+        saveFileToDevice(SameAccountActivity.this, responseFileName, jsonString);
+        editor.putLong("time", new Date().getTime());
+        editor.apply();
+
+        try {
+            JSONArray jsonArray = new JSONArray(jsonString);
+            for (int i = 0; i < jsonArray.length(); i++) {
+                appList.add(jsonArray.getJSONObject(i).getString("appStoreLink"));
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        new MyAsync().execute();
+    }
+
+    void fetchFromDevice() {
+        File assetDir = getApplicationContext().getDir("asset", Context.MODE_PRIVATE);
+        File fileWithinAssetDir = new File(assetDir, accountData);
+
+        jsonString = readFileFromDevice(SameAccountActivity.this, fileWithinAssetDir.getPath());
+        Log.e("log", "jsonString :" + jsonString);
+        try {
+            JSONArray jsonArray = new JSONArray(jsonString);
+            for (int i = 0; i < jsonArray.length(); i++) {
+                String appImage = jsonArray.getJSONObject(i).getString("appImage");
+                String appName = jsonArray.getJSONObject(i).getString("appName");
+                String appLink = jsonArray.getJSONObject(i).getString("appLink");
+                appsArrayList.add(new Apps(appName, appImage, appLink));
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        AppsAdapter appsAdapter = new AppsAdapter(SameAccountActivity.this, appsArrayList);
+        rvAppList.setAdapter(appsAdapter);
     }
 
     public void saveFileToDevice(Context context, String fileName, String content) {
@@ -118,47 +157,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public void newRequest() {
-        jsonString = getJsonFromAsset();
-        saveFileToDevice(MainActivity.this, responseFileName, jsonString);
-        editor.putLong("time", new Date().getTime());
-        editor.apply();
-
-        try {
-            JSONArray jsonArray = new JSONArray(jsonString);
-            for (int i = 0; i < jsonArray.length(); i++) {
-                appList.add(jsonArray.getJSONObject(i).getString("appLink"));
-            }
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-
-        new MyAsync().execute();
-    }
-
-    public void fetchFromDevice(){
-        File assetDir = getApplicationContext().getDir("asset", Context.MODE_PRIVATE);
-        File fileWithinAssetDir = new File(assetDir, appData);
-
-        jsonString = readFileFromDevice(MainActivity.this, fileWithinAssetDir.getPath());
-        Log.e("log","jsonString : "+jsonString);
-        try {
-            JSONArray jsonArray = new JSONArray(jsonString);
-            for (int i = 0; i < jsonArray.length(); i++) {
-                String appImage = jsonArray.getJSONObject(i).getString("appImage");
-                String appName = jsonArray.getJSONObject(i).getString("appName");
-                String appLink = jsonArray.getJSONObject(i).getString("appLink");
-                appsArrayList.add(new Apps(appName, appImage, appLink));
-            }
-        } catch (JSONException e) {
-            Log.e("log","error :"+e.getMessage());
-            e.printStackTrace();
-        }
-
-        AppsAdapter appsAdapter = new AppsAdapter(MainActivity.this, appsArrayList);
-        rvAppList.setAdapter(appsAdapter);
-    }
-
     class MyAsync extends AsyncTask<Void, Void, Void> {
 
         @Override
@@ -170,22 +168,24 @@ public class MainActivity extends AppCompatActivity {
         protected Void doInBackground(Void... voids) {
             Log.e("log", "doInBackground");
             try {
+                Document document = Jsoup.connect(appList.get(0).toString()).get();
+                int count = document.getElementsByClass("ImZGtf mpg5gc").size();
                 JSONArray jsonArray = new JSONArray();
-                for (int i = 0; i < appList.size(); i++) {
 
-                    Document document = Jsoup.connect(appList.get(i).toString()).get();
-                    String appImage = document.getElementsByClass("xSyT2c").select("img").attr("src");
-                    String appName = document.getElementsByClass("AHFaub").select("span").text();
-                    appsArrayList.add(new Apps(appName, appImage, appList.get(i).toString()));
+                for (int i = 0; i < count; i++) {
+                    String appImage = document.getElementsByClass("ImZGtf").get(i).select(".kJ9uy").select("img").attr("data-src");
+                    String appName = document.getElementsByClass("ImZGtf").get(i).select(".WsMG1c").text();
+                    String appLink = document.getElementsByClass("ImZGtf").get(i).getElementsByTag("a").attr("href");
+
+                    appsArrayList.add(new Apps(appName, appImage, "https://play.google.com" + appLink));
 
                     JSONObject jsonObject = new JSONObject();
                     jsonObject.put("appImage", appImage);
                     jsonObject.put("appName", appName);
-                    jsonObject.put("appLink", appList.get(i).toString());
+                    jsonObject.put("appLink", "https://play.google.com" + appLink);
                     jsonArray.put(jsonObject);
                 }
-//               Log.e("log","json : "+jsonArray.toString());
-                saveFileToDevice(getApplicationContext(), appData, jsonArray.toString());
+                saveFileToDevice(getApplicationContext(), accountData, jsonArray.toString());
             } catch (IOException | JSONException e) {
                 Log.e("log", "error : " + e.getMessage());
                 e.printStackTrace();
@@ -196,9 +196,10 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPostExecute(Void unused) {
             super.onPostExecute(unused);
-            AppsAdapter appsAdapter = new AppsAdapter(MainActivity.this, appsArrayList);
+            AppsAdapter appsAdapter = new AppsAdapter(SameAccountActivity.this, appsArrayList);
             rvAppList.setAdapter(appsAdapter);
             Log.e("log", "complete");
         }
     }
+
 }
