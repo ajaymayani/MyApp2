@@ -2,11 +2,17 @@ package com.vidshort.lyrical.video.status.myapp;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.util.EventLogTags;
 import android.util.JsonReader;
 import android.util.Log;
+import android.view.View;
+import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -66,20 +72,32 @@ public class MainActivity extends AppCompatActivity {
         File fileWithinAssetDir = new File(assetDir, responseFileName);
 
         String str2 = readFileFromDevice(MainActivity.this, fileWithinAssetDir.getPath());
-
+Log.e("log","str2 "+str2);
         JsonParser parser = new JsonParser();
 
         JsonElement o1 = parser.parse(str1);
         JsonElement o2 = parser.parse(str2);
 
-        if (sp.getLong("time", 0) == 0) {
-            newRequest();
-        } else if (!o1.equals(o2)) {
-            newRequest();
-        } else if (new Date().getTime() > (sp.getLong("time", 0) + 300000)) {
-            newRequest();
+        Log.e("log","is online :"+isOnline()+"/"+sp.getLong("time", 0));
+        if (isOnline()) {
+            if (sp.getLong("time", 0) == 0) {
+                newRequest();
+            } else if (!o1.equals(o2)) {
+                newRequest();
+            } else if (new Date().getTime() > (sp.getLong("time", 0) + 300000)) {
+                newRequest();
+            } else {
+                fetchFromDevice();
+            }
         } else {
-            fetchFromDevice();
+            if (!str2.isEmpty())
+            {
+                fetchFromDevice();
+            }else
+            {
+                skeleton.showOriginal();
+                Toast.makeText(this, "no internet connection.....", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
@@ -205,5 +223,14 @@ public class MainActivity extends AppCompatActivity {
             AppsAdapter appsAdapter = new AppsAdapter(MainActivity.this, appsArrayList);
             rvAppList.setAdapter(appsAdapter);
         }
+    }
+
+    public boolean isOnline() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo netInfo = cm.getActiveNetworkInfo();
+        if (netInfo != null && netInfo.isConnectedOrConnecting()) {
+            return true;
+        }
+        return false;
     }
 }

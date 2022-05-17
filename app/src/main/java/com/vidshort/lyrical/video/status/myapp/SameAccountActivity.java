@@ -6,9 +6,12 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.faltenreich.skeletonlayout.Skeleton;
 import com.faltenreich.skeletonlayout.SkeletonLayoutUtils;
@@ -71,17 +74,26 @@ public class SameAccountActivity extends AppCompatActivity {
 
 
         Log.e("log", "time " + sp.getLong("time", 0));
-        if (sp.getLong("time", 0) == 0) {
-            newRequest();
+        if (isOnline()) {
+            if (sp.getLong("time", 0) == 0) {
+                newRequest();
 
-        } else if (!o1.equals(o2)) {
-            newRequest();
-        } else if (new Date().getTime() > (sp.getLong("time", 0) + 300000)) {
-            Log.e("log", "inside if");
-            newRequest();
+            } else if (!o1.equals(o2)) {
+                newRequest();
+            } else if (new Date().getTime() > (sp.getLong("time", 0) + 300000)) {
+                Log.e("log", "inside if");
+                newRequest();
+            } else {
+                Log.e("log", "inside else");
+                fetchFromDevice();
+            }
         } else {
-            Log.e("log", "inside else");
-            fetchFromDevice();
+            if (!str2.isEmpty()) {
+                fetchFromDevice();
+            } else {
+                skeleton.showOriginal();
+                Toast.makeText(this, "no internet connection.....", Toast.LENGTH_SHORT).show();
+            }
         }
         Log.e("log", "new request time :" + (sp.getLong("time", 0) + 300000));
     }
@@ -217,4 +229,12 @@ public class SameAccountActivity extends AppCompatActivity {
         }
     }
 
+    public boolean isOnline() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo netInfo = cm.getActiveNetworkInfo();
+        if (netInfo != null && netInfo.isConnectedOrConnecting()) {
+            return true;
+        }
+        return false;
+    }
 }
