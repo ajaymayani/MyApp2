@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.util.JsonReader;
 import android.util.Log;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -12,6 +13,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.faltenreich.skeletonlayout.Skeleton;
 import com.faltenreich.skeletonlayout.SkeletonLayoutUtils;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import com.vidshort.lyrical.video.status.myapp.Adapters.AppsAdapter;
 import com.vidshort.lyrical.video.status.myapp.model.Apps;
 
@@ -58,18 +61,26 @@ public class MainActivity extends AppCompatActivity {
         skeleton.showSkeleton();
         rvAppList.setLayoutManager(new LinearLayoutManager(this));
 
+        String str1 = getJsonFromAsset();
+        File assetDir = getApplicationContext().getDir("asset", Context.MODE_PRIVATE);
+        File fileWithinAssetDir = new File(assetDir, responseFileName);
 
-        Log.e("log", "time " + sp.getLong("time", 0));
+        String str2 = readFileFromDevice(MainActivity.this, fileWithinAssetDir.getPath());
+
+        JsonParser parser = new JsonParser();
+
+        JsonElement o1 = parser.parse(str1);
+        JsonElement o2 = parser.parse(str2);
+
         if (sp.getLong("time", 0) == 0) {
             newRequest();
+        } else if (!o1.equals(o2)) {
+            newRequest();
         } else if (new Date().getTime() > (sp.getLong("time", 0) + 300000)) {
-            Log.e("log", "inside if");
             newRequest();
         } else {
-            Log.e("log", "inside else");
             fetchFromDevice();
         }
-        Log.e("log", "new request time :" + (sp.getLong("time", 0) + 300000));
     }
 
     String getJsonFromAsset() {
@@ -136,12 +147,11 @@ public class MainActivity extends AppCompatActivity {
         new MyAsync().execute();
     }
 
-    public void fetchFromDevice(){
+    public void fetchFromDevice() {
         File assetDir = getApplicationContext().getDir("asset", Context.MODE_PRIVATE);
         File fileWithinAssetDir = new File(assetDir, appData);
 
         jsonString = readFileFromDevice(MainActivity.this, fileWithinAssetDir.getPath());
-        Log.e("log","jsonString : "+jsonString);
         try {
             JSONArray jsonArray = new JSONArray(jsonString);
             for (int i = 0; i < jsonArray.length(); i++) {
@@ -151,7 +161,6 @@ public class MainActivity extends AppCompatActivity {
                 appsArrayList.add(new Apps(appName, appImage, appLink));
             }
         } catch (JSONException e) {
-            Log.e("log","error :"+e.getMessage());
             e.printStackTrace();
         }
 
@@ -168,7 +177,6 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected Void doInBackground(Void... voids) {
-            Log.e("log", "doInBackground");
             try {
                 JSONArray jsonArray = new JSONArray();
                 for (int i = 0; i < appList.size(); i++) {
@@ -184,10 +192,8 @@ public class MainActivity extends AppCompatActivity {
                     jsonObject.put("appLink", appList.get(i).toString());
                     jsonArray.put(jsonObject);
                 }
-//               Log.e("log","json : "+jsonArray.toString());
                 saveFileToDevice(getApplicationContext(), appData, jsonArray.toString());
             } catch (IOException | JSONException e) {
-                Log.e("log", "error : " + e.getMessage());
                 e.printStackTrace();
             }
             return null;
@@ -198,7 +204,6 @@ public class MainActivity extends AppCompatActivity {
             super.onPostExecute(unused);
             AppsAdapter appsAdapter = new AppsAdapter(MainActivity.this, appsArrayList);
             rvAppList.setAdapter(appsAdapter);
-            Log.e("log", "complete");
         }
     }
 }

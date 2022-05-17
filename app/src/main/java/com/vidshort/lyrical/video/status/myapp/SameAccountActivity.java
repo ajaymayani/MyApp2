@@ -12,6 +12,8 @@ import android.util.Log;
 
 import com.faltenreich.skeletonlayout.Skeleton;
 import com.faltenreich.skeletonlayout.SkeletonLayoutUtils;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import com.vidshort.lyrical.video.status.myapp.Adapters.AppsAdapter;
 import com.vidshort.lyrical.video.status.myapp.model.Apps;
 
@@ -56,11 +58,24 @@ public class SameAccountActivity extends AppCompatActivity {
         skeleton.showSkeleton();
         rvAppList.setLayoutManager(new LinearLayoutManager(this));
 
+        String str1 = getJsonFromAsset();
+        File assetDir = getApplicationContext().getDir("asset", Context.MODE_PRIVATE);
+        File fileWithinAssetDir = new File(assetDir, responseFileName);
+
+        String str2 = readFileFromDevice(SameAccountActivity.this, fileWithinAssetDir.getPath());
+
+        JsonParser parser = new JsonParser();
+
+        JsonElement o1 = parser.parse(str1);
+        JsonElement o2 = parser.parse(str2);
+
 
         Log.e("log", "time " + sp.getLong("time", 0));
         if (sp.getLong("time", 0) == 0) {
             newRequest();
 
+        } else if (!o1.equals(o2)) {
+            newRequest();
         } else if (new Date().getTime() > (sp.getLong("time", 0) + 300000)) {
             Log.e("log", "inside if");
             newRequest();
